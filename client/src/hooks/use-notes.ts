@@ -5,7 +5,7 @@ import { Note } from '@/types';
 export function useNotes(type: string = 'all') {
     const { data, error, isLoading, mutate } = useSWR<{ notes: Note[]; total: number }>(
         `/notes?type=${type}`,
-        (url) => api.get(url)
+        (url: string) => api.get(url) as Promise<any>
     );
 
     return {
@@ -20,7 +20,7 @@ export function useNotes(type: string = 'all') {
 export function useNote(id: string) {
     const { data, error, isLoading, mutate } = useSWR<Note & { ai_metadata: any; goals: any[] }>(
         id ? `/notes/${id}` : null,
-        (url) => api.get(url)
+        (url: string) => api.get(url) as Promise<any>
     );
 
     return {
@@ -29,4 +29,8 @@ export function useNote(id: string) {
         isError: error,
         mutate,
     };
+}
+
+export async function convertNote(id: string, type: 'task' | 'goal' | 'note') {
+    return api.put(`/notes/${id}/convert`, { type });
 }

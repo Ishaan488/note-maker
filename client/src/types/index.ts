@@ -27,7 +27,9 @@ export interface Task {
     status: 'pending' | 'completed';
     deadline: string | null;
     priority: number;
-    created_at?: string;
+    created_at: string;
+    note_title?: string;
+    note_type?: NoteType;
 }
 
 export interface Goal {
@@ -36,7 +38,8 @@ export interface Goal {
     title: string;
     deadline: string | null;
     status: 'active' | 'completed' | 'abandoned';
-    created_at?: string;
+    created_at: string;
+    note_title?: string;
 }
 
 export interface AIMetadata {

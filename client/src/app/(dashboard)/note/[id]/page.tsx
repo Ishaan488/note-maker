@@ -7,7 +7,7 @@ import { ArrowLeft, Trash2, Calendar, Target, CheckSquare, Sparkles } from 'luci
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useNote } from '@/hooks/use-notes';
+import { useNote, convertNote } from '@/hooks/use-notes';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
@@ -16,8 +16,22 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
     const router = useRouter();
     const unwrappedParams = use(params);
     const id = unwrappedParams.id;
-    const { note, isLoading, isError } = useNote(id);
+    const { note, isLoading, isError, mutate } = useNote(id);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isConverting, setIsConverting] = useState(false);
+
+    const handleConvert = async (type: 'task' | 'goal' | 'note') => {
+        setIsConverting(true);
+        try {
+            await convertNote(id, type);
+            toast.success(`Converted to ${type}`);
+            mutate();
+        } catch (error) {
+            toast.error('Failed to convert note');
+        } finally {
+            setIsConverting(false);
+        }
+    };
 
     const handleDelete = async () => {
         if (!confirm('Are you sure you want to delete this note?')) return;
@@ -171,6 +185,45 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    )}
+
+                    {/* Manual Conversion Actions */}
+                    {note.note_type === 'note' && (
+                        <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-xl p-5 mt-6">
+                            <h3 className="text-xs font-semibold text-zinc-500 mb-3 uppercase tracking-wider">Manual Actions</h3>
+                            <div className="space-y-3">
+                                <Button
+                                    variant="outline"
+                                    className="w-full justify-start text-zinc-300 hover:text-amber-500 hover:border-amber-500/50 bg-zinc-900"
+                                    onClick={() => handleConvert('task')}
+                                    disabled={isConverting}
+                                >
+                                    <CheckSquare className="mr-2 h-4 w-4" /> Convert to Action Item
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="w-full justify-start text-zinc-300 hover:text-purple-500 hover:border-purple-500/50 bg-zinc-900"
+                                    onClick={() => handleConvert('goal')}
+                                    disabled={isConverting}
+                                >
+                                    <Target className="mr-2 h-4 w-4" /> Mark as Long-Term Goal
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {note.note_type !== 'note' && (
+                        <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-xl p-5 mt-6">
+                            <h3 className="text-xs font-semibold text-zinc-500 mb-3 uppercase tracking-wider">Manual Actions</h3>
+                            <Button
+                                variant="outline"
+                                className="w-full justify-start text-zinc-300 hover:text-rose-400 hover:border-rose-400/50 bg-zinc-900"
+                                onClick={() => handleConvert('note')}
+                                disabled={isConverting}
+                            >
+                                <ArrowLeft className="mr-2 h-4 w-4" /> Revert to Regular Note
+                            </Button>
                         </div>
                     )}
                 </div>

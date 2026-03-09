@@ -210,8 +210,113 @@ router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
     }
 });
 
+// PUT /api/notes/:id/convert — Convert note to task, goal, or revert to note
+router.put('/:id/convert', async (req: AuthRequest, res: Response): Promise<any> => {
+    const noteId = req.params.id;
+    const { type } = req.body; // 'task', 'goal', or 'note'
+
+    if (type !== 'task' && type !== 'goal' && type !== 'note') {
+        return res.status(400).json({ error: 'Invalid conversion type' });
+    }
+
+    try {
+        await pool.query('BEGIN');
+
+        // Verify ownership and get note details
+        const { rows: noteRows } = await pool.query(
+            'SELECT * FROM notes WHERE id = $1 AND user_id = $2 FOR UPDATE',
+            [noteId, req.userId]
+        );
+
+        if (noteRows.length === 0) {
+            await pool.query('ROLLBACK');
+            return res.status(404).json({ error: 'Note not found or unauthorized' });
+        }
+
+        const note = noteRows[0];
+
+        // Update note type
+        await pool.query(`UPDATE notes SET note_type = $1 WHERE id = $2`, [type, noteId]);
+
+        if (type === 'task') {
+            await pool.query(
+                `INSERT INTO tasks (note_id, title) VALUES ($1, $2)`,
+                [noteId, note.title || 'Untitled Task']
+            );
+        } else if (type === 'goal') {
+            await pool.query(
+                `INSERT INTO goals (note_id, title) VALUES ($1, $2)`,
+                [noteId, note.title || 'Untitled Goal']
+            );
+        } else if (type === 'note') {
+            // Revert: remove any existing tasks or goals linked to this note
+            await pool.query(`DELETE FROM tasks WHERE note_id = $1`, [noteId]);
+            await pool.query(`DELETE FROM goals WHERE note_id = $1`, [noteId]);
+        }
+
+        await pool.query('COMMIT');
+        res.json({ success: true, type });
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error('Error converting note:', error);
+        res.status(500).json({ error: 'Server error converting note' });
+    }
+});
+
+// PUT /api/notes/:id/convert — Convert note to task or goal
+router.put('/:id/convert', async (req: AuthRequest, res: Response): Promise<void> => {
+    const noteId = req.params.id;
+    const { type } = req.body; // 'task' or 'goal'
+
+    if (type !== 'task' && type !== 'goal') {
+        res.status(400).json({ error: 'Invalid conversion type' });
+        return;
+    }
+
+    try {
+        await pool.query('BEGIN');
+
+        // Verify ownership and get note details
+        const { rows: noteRows } = await pool.query(
+            'SELECT * FROM notes WHERE id = $1 AND user_id = $2 FOR UPDATE',
+            [noteId, req.userId]
+        );
+
+        if (noteRows.length === 0) {
+            await pool.query('ROLLBACK');
+            res.status(404).json({ error: 'Note not found or unauthorized' });
+            return;
+        }
+
+        const note = noteRows[0];
+
+        // Update note type
+        await pool.query(`UPDATE notes SET note_type = $1 WHERE id = $2`, [type, noteId]);
+
+        // Insert into respective table
+        if (type === 'task') {
+            await pool.query(
+                `INSERT INTO tasks (note_id, title) VALUES ($1, $2)`,
+                [noteId, note.title || 'Untitled Task']
+            );
+        } else if (type === 'goal') {
+            await pool.query(
+                `INSERT INTO goals (note_id, title) VALUES ($1, $2)`,
+                [noteId, note.title || 'Untitled Goal']
+            );
+        }
+
+        await pool.query('COMMIT');
+        res.json({ success: true, type });
+    } catch (error) {
+        await pool.query('ROLLBACK');
+        console.error('Error converting note:', error);
+        res.status(500).json({ error: 'Server error converting note' });
+    }
+});
+
 // PUT /api/notes/:id — Update note
-router.put('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
+router.put('/:id', async (req: AuthRequest, res: Response): Promise<any> => {
     try {
         const { id } = req.params;
         const { content_text, title, summary, note_type } = req.body;

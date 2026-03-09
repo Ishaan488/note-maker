@@ -1,4 +1,5 @@
 import { Sidebar } from '@/components/sidebar';
+import { MobileNav } from '@/components/mobile-nav';
 
 export default function DashboardLayout({
     children,
@@ -19,7 +20,8 @@ export default function DashboardLayout({
                 </div>
             </main>
 
-            {/* Mobile Nav would go here if implemented later */}
+            {/* Mobile Nav */}
+            <MobileNav />
         </div>
     );
 }
