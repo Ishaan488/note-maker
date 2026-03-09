@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Clock, CheckSquare, Target, LogOut, User, Search } from 'lucide-react';
+import { Clock, CheckSquare, Target, LogOut, User, Search, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 
@@ -31,6 +31,7 @@ export function MobileNav() {
 
     const navItems = [
         { name: 'Timeline', href: '/feed', icon: Clock },
+        { name: 'Review', href: '/daily-review', icon: FileText },
         { name: 'Search', href: '/search', icon: Search },
         { name: 'Tasks', href: '/tasks', icon: CheckSquare },
         { name: 'Goals', href: '/goals', icon: Target },

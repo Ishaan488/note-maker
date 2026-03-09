@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { NoteCard } from '@/components/note-card';
 import { format } from 'date-fns';
-import { ArrowLeft, Trash2, Calendar, Target, CheckSquare, Sparkles, FileText, Clock } from 'lucide-react';
+import { ArrowLeft, Trash2, Calendar, Target, CheckSquare, Sparkles, FileText, Clock, BellRing } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNote, convertNote } from '@/hooks/use-notes';
@@ -27,6 +28,27 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
 
     const [isDeleting, setIsDeleting] = useState(false);
     const [isConverting, setIsConverting] = useState(false);
+    const [remindAt, setRemindAt] = useState('');
+    const [isSettingReminder, setIsSettingReminder] = useState(false);
+
+    const handleSetReminder = async () => {
+        if (!remindAt) return;
+        setIsSettingReminder(true);
+        try {
+            await api.post('/reminders', {
+                title: note?.title || 'Reminder for Note',
+                remind_at: new Date(remindAt).toISOString(),
+                entity_type: note?.note_type,
+                entity_id: note?.id
+            });
+            toast.success('Reminder set successfully!');
+            setRemindAt('');
+        } catch (error) {
+            toast.error('Failed to set reminder');
+        } finally {
+            setIsSettingReminder(false);
+        }
+    };
 
     const handleConvert = async (type: 'task' | 'goal' | 'note') => {
         setIsConverting(true);
@@ -149,6 +171,29 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
                             ) : (
                                 <span className="text-sm text-zinc-500">No tags detected</span>
                             )}
+                        </div>
+                    </div>
+
+                    {/* Set Reminder */}
+                    <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-xl p-5 mt-6">
+                        <h3 className="text-sm font-medium text-blue-400/80 mb-3 uppercase tracking-wider flex items-center gap-2">
+                            <BellRing className="h-4 w-4" /> Reminders
+                        </h3>
+                        <div className="space-y-3">
+                            <Input
+                                type="datetime-local"
+                                value={remindAt}
+                                onChange={(e) => setRemindAt(e.target.value)}
+                                className="bg-zinc-950 border-zinc-800 text-zinc-300 text-sm"
+                            />
+                            <Button
+                                variant="secondary"
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                                onClick={handleSetReminder}
+                                disabled={isSettingReminder || !remindAt}
+                            >
+                                Set Reminder
+                            </Button>
                         </div>
                     </div>
 

@@ -91,3 +91,20 @@ ALTER TABLE notes ADD COLUMN IF NOT EXISTS search_vector TSVECTOR
   GENERATED ALWAYS AS (to_tsvector('english', coalesce(title, '') || ' ' || coalesce(summary, '') || ' ' || coalesce(content_text, ''))) STORED;
 
 CREATE INDEX IF NOT EXISTS idx_notes_search_vector ON notes USING GIN(search_vector);
+
+-- Reminders table (Phase 7)
+CREATE TABLE IF NOT EXISTS reminders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  title VARCHAR(500) NOT NULL,
+  description TEXT,
+  remind_at TIMESTAMPTZ NOT NULL,
+  is_read BOOLEAN DEFAULT FALSE,
+  entity_type VARCHAR(50),
+  entity_id UUID,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_reminders_user_id ON reminders(user_id);
+CREATE INDEX IF NOT EXISTS idx_reminders_remind_at ON reminders(remind_at);
+CREATE INDEX IF NOT EXISTS idx_reminders_is_read ON reminders(user_id, is_read, remind_at);

@@ -6,6 +6,8 @@ import authRoutes from './routes/auth';
 import notesRoutes from './routes/notes';
 import tasksRoutes from './routes/tasks';
 import goalsRoutes from './routes/goals';
+import remindersRoutes from './routes/reminders';
+import dailyReviewRoutes from './routes/daily-review';
 
 dotenv.config();
 
@@ -24,6 +26,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/notes', notesRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/goals', goalsRoutes);
+app.use('/api/reminders', remindersRoutes);
+app.use('/api/daily-review', dailyReviewRoutes);
 
 // Health check
 app.get('/api/health', (_, res) => {

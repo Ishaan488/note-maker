@@ -1,5 +1,6 @@
 import { Sidebar } from '@/components/sidebar';
 import { MobileNav } from '@/components/mobile-nav';
+import { GlobalReminders } from '@/components/global-reminders';
 
 export default function DashboardLayout({
     children,
@@ -22,6 +23,9 @@ export default function DashboardLayout({
 
             {/* Mobile Nav */}
             <MobileNav />
+
+            {/* Global Listeners */}
+            <GlobalReminders />
         </div>
     );
 }

@@ -45,7 +45,7 @@ export function Sidebar() {
         { name: 'Goals', href: '/goals', icon: Target },
         { name: 'Search', href: '/search', icon: Search },
         { name: 'Reminders', href: '/reminders', icon: Bell },
-        { name: 'Daily Review', href: '/review', icon: FileText },
+        { name: 'Daily Review', href: '/daily-review', icon: FileText },
     ];
 
     return (
