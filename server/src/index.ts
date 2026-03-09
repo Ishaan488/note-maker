@@ -14,11 +14,21 @@ import { startCronJobs } from './services/cron';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 // Middleware
+const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',')
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
 app.use(cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://10.3.160.203:3000', '*'],
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, server-to-server)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+            return callback(null, true);
+        }
+        return callback(null, true); // Allow all for now; tighten in production
+    },
     credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -37,18 +47,18 @@ app.get('/api/health', (_, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Start server
-async function start() {
-    try {
-        await initializeDatabase();
-        startCronJobs();
-        app.listen(PORT as number, '0.0.0.0', () => {
-            console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-        });
-    } catch (error) {
-        console.error('Failed to start server:', error);
-        process.exit(1);
-    }
+// Initialize database on cold start
+initializeDatabase().catch(err => console.error('DB init error:', err));
+
+// Start cron jobs only when running as a persistent server (not on Vercel)
+if (!process.env.VERCEL) {
+    startCronJobs();
+
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT as number, '0.0.0.0', () => {
+        console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+    });
 }
 
-start();
+// Export for Vercel serverless
+export default app;
