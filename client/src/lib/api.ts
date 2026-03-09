@@ -1,5 +1,5 @@
-// Use relative URL to leverage Next.js rewrites proxy (works on any host/tunnel)
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+// Always use relative URL — Next.js rewrites proxy this to the backend
+const API_URL = '/api';
 
 export class ApiError extends Error {
     constructor(public status: number, message: string) {
