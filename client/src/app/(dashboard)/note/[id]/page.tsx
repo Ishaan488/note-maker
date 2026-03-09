@@ -2,8 +2,10 @@
 
 import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
+import { NoteCard } from '@/components/note-card';
 import { format } from 'date-fns';
-import { ArrowLeft, Trash2, Calendar, Target, CheckSquare, Sparkles } from 'lucide-react';
+import { ArrowLeft, Trash2, Calendar, Target, CheckSquare, Sparkles, FileText, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,6 +19,12 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
     const unwrappedParams = use(params);
     const id = unwrappedParams.id;
     const { note, isLoading, isError, mutate } = useNote(id);
+    const { data: relatedData } = useSWR(
+        id ? `/notes/${id}/related` : null,
+        (url: string) => api.get(url) as Promise<any>
+    );
+    const relatedNotes = relatedData?.related || [];
+
     const [isDeleting, setIsDeleting] = useState(false);
     const [isConverting, setIsConverting] = useState(false);
 
@@ -127,6 +135,7 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
 
                 {/* Sidebar Data Area */}
                 <div className="space-y-6">
+
                     {/* Tags */}
                     <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-xl p-5">
                         <h3 className="text-sm font-medium text-zinc-400 mb-3 uppercase tracking-wider">Tags</h3>
@@ -228,9 +237,22 @@ export default function NoteDetailPage({ params }: { params: Promise<{ id: strin
                     )}
                 </div>
             </div>
+
+            {/* Related Notes Area */}
+            {relatedNotes.length > 0 && (
+                <div className="mt-12 space-y-4">
+                    <div className="flex items-center justify-between border-b border-zinc-800/60 pb-4">
+                        <h2 className="text-xl font-semibold text-zinc-100 flex items-center gap-2">
+                            Related Notes
+                        </h2>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {relatedNotes.map((relatedNote: any) => (
+                            <NoteCard key={relatedNote.id} note={relatedNote} />
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
-
-// Needed missing icons from the file scope to compile gracefully
-import { FileText, Clock } from 'lucide-react';

@@ -84,3 +84,10 @@ CREATE INDEX IF NOT EXISTS idx_tasks_note_id ON tasks(note_id);
 CREATE INDEX IF NOT EXISTS idx_goals_note_id ON goals(note_id);
 CREATE INDEX IF NOT EXISTS idx_note_tags_note_id ON note_tags(note_id);
 CREATE INDEX IF NOT EXISTS idx_note_tags_tag_id ON note_tags(tag_id);
+
+-- Full Text Search Optimization (Phase 6)
+-- Add a generated tsvector column for fast querying across title, summary, and content
+ALTER TABLE notes ADD COLUMN IF NOT EXISTS search_vector TSVECTOR 
+  GENERATED ALWAYS AS (to_tsvector('english', coalesce(title, '') || ' ' || coalesce(summary, '') || ' ' || coalesce(content_text, ''))) STORED;
+
+CREATE INDEX IF NOT EXISTS idx_notes_search_vector ON notes USING GIN(search_vector);

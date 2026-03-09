@@ -210,6 +210,99 @@ router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
     }
 });
 
+// GET /api/notes/search/query — Search notes
+router.get('/search/query', async (req: AuthRequest, res: Response): Promise<any> => {
+    try {
+        const { q, type, tags, limit = '50', offset = '0' } = req.query;
+
+        let query = `
+            SELECT n.*,
+                COALESCE(
+                (SELECT json_agg(t.name)
+                FROM note_tags nt
+                JOIN tags t ON nt.tag_id = t.id
+                WHERE nt.note_id = n.id), '[]'
+                ) as tags
+            FROM notes n
+            WHERE n.user_id = $1
+        `;
+        const params: any[] = [req.userId];
+        let paramIndex = 2;
+
+        if (q && typeof q === 'string' && q.trim().length > 0) {
+            query += ` AND n.search_vector @@ plainto_tsquery('english', $${paramIndex})`;
+            params.push(q);
+            paramIndex++;
+        }
+
+        if (type && typeof type === 'string' && type !== 'all') {
+            query += ` AND n.note_type = $${paramIndex}`;
+            params.push(type);
+            paramIndex++;
+        }
+
+        if (tags && typeof tags === 'string') {
+            const tagArray = tags.split(',').map(t => t.trim().toLowerCase());
+            if (tagArray.length > 0) {
+                query += ` AND EXISTS (
+                    SELECT 1 FROM note_tags nt 
+                    JOIN tags t ON nt.tag_id = t.id 
+                    WHERE nt.note_id = n.id AND t.name = ANY($${paramIndex})
+                )`;
+                params.push(tagArray);
+                paramIndex++;
+            }
+        }
+
+        // Rank by search vector if searching, otherwise by date
+        if (q && typeof q === 'string' && q.trim().length > 0) {
+            query += ` ORDER BY ts_rank(n.search_vector, plainto_tsquery('english', $2)) DESC, n.created_at DESC`;
+        } else {
+            query += ` ORDER BY n.created_at DESC`;
+        }
+
+        query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+        params.push(parseInt(limit as string), parseInt(offset as string));
+
+        const result = await pool.query(query, params);
+        res.json({ notes: result.rows });
+    } catch (error) {
+        console.error('Search notes error:', error);
+        res.status(500).json({ error: 'Internal server error during search' });
+    }
+});
+
+// GET /api/notes/:id/related — Get related notes based on shared tags
+router.get('/:id/related', async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        const query = `
+            SELECT n.id, n.title, n.summary, n.note_type, n.created_at,
+                COUNT(nt2.tag_id) as shared_tags,
+                COALESCE(
+                    (SELECT json_agg(t.name)
+                    FROM note_tags nt3
+                    JOIN tags t ON nt3.tag_id = t.id
+                    WHERE nt3.note_id = n.id), '[]'
+                ) as tags
+            FROM notes n
+            JOIN note_tags nt1 ON nt1.note_id = $1
+            JOIN note_tags nt2 ON nt2.tag_id = nt1.tag_id AND nt2.note_id = n.id
+            WHERE n.user_id = $2 AND n.id != $1
+            GROUP BY n.id
+            ORDER BY shared_tags DESC, n.created_at DESC
+            LIMIT 5
+        `;
+
+        const result = await pool.query(query, [id, req.userId]);
+        res.json({ related: result.rows });
+    } catch (error) {
+        console.error('Related notes error:', error);
+        res.status(500).json({ error: 'Internal server error fetching related' });
+    }
+});
+
 // PUT /api/notes/:id/convert — Convert note to task, goal, or revert to note
 router.put('/:id/convert', async (req: AuthRequest, res: Response): Promise<any> => {
     const noteId = req.params.id;
