@@ -102,9 +102,20 @@ CREATE TABLE IF NOT EXISTS reminders (
   is_read BOOLEAN DEFAULT FALSE,
   entity_type VARCHAR(50),
   entity_id UUID,
+  is_notified BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_reminders_user_id ON reminders(user_id);
 CREATE INDEX IF NOT EXISTS idx_reminders_remind_at ON reminders(remind_at);
 CREATE INDEX IF NOT EXISTS idx_reminders_is_read ON reminders(user_id, is_read, remind_at);
+CREATE INDEX IF NOT EXISTS idx_reminders_is_notified ON reminders(user_id, is_notified, remind_at);
+
+-- Push Notifications (Phase 8)
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  subscription_json JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, subscription_json)
+);

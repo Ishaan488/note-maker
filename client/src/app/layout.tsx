@@ -14,6 +14,7 @@ export const metadata: Metadata = {
     title: 'Note Maker',
     statusBarStyle: 'black-translucent',
   },
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({

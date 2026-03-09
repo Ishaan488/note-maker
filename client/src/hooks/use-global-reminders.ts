@@ -1,52 +1,73 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import useSWR from 'swr';
+import { useEffect } from 'react';
 import { api } from '@/lib/api';
-import { toast } from 'sonner';
+
+// Utility to convert Base64 URL safe VAPID key to Uint8Array
+function urlBase64ToUint8Array(base64String: string) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
 
 export function useGlobalReminders() {
-    // Poll every 1 minute
-    const { data } = useSWR(
-        '/reminders',
-        (url: string) => api.get(url) as Promise<any>,
-        { refreshInterval: 60000 }
-    );
-
-    const notifiedSet = useRef<Set<string>>(new Set());
-
     useEffect(() => {
-        if (!data || !data.reminders) return;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            console.log('Push notifications are not supported by the browser.');
+            return;
+        }
 
-        const now = new Date();
+        const registerAndSubscribe = async () => {
+            try {
+                // 1. Register Service Worker
+                const registration = await navigator.serviceWorker.register('/sw.js');
 
-        data.reminders.forEach((reminder: any) => {
-            const remindTime = new Date(reminder.remind_at);
+                // 2. Request Permission
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    console.log('Notification permission not granted.');
+                    return;
+                }
 
-            // If the reminder is due (or past due by up to 10 minutes) and we haven't notified yet
-            if (remindTime <= now && !notifiedSet.current.has(reminder.id)) {
+                // 3. Get VAPID public key from backend
+                const response = await api.get('/notifications/vapid-public-key');
+                const vapidPublicKey = (response as any).publicKey;
 
-                // Show toast notification
-                toast('🔔 Reminder Due!', {
-                    description: reminder.title,
-                    action: {
-                        label: 'View',
-                        onClick: () => {
-                            if (reminder.entity_id) {
-                                window.location.href = `/note/${reminder.entity_id}`;
-                            } else {
-                                window.location.href = `/reminders`;
-                            }
-                        }
-                    },
-                    duration: 10000,
+                if (!vapidPublicKey) {
+                    console.error('No VAPID public key received from backend');
+                    return;
+                }
+
+                const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+
+                // 4. Subscribe to PushManager
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: convertedVapidKey
                 });
 
-                // Mark as notified in memory so we don't spam toasts
-                notifiedSet.current.add(reminder.id);
-            }
-        });
-    }, [data]);
+                // 5. Send subscription to our backend
+                await api.post('/notifications/subscribe', {
+                    subscription
+                });
 
-    return data?.reminders || [];
+                console.log('Successfully subscribed to Web Push Notifications!');
+            } catch (error) {
+                console.error('Error during service worker registration or subscription:', error);
+            }
+        };
+
+        registerAndSubscribe();
+    }, []);
+
+    return null;
 }

@@ -1,13 +1,5 @@
-// Auto-detect the API URL based on the current browser host so mobile works seamlessly
-const getApiUrl = () => {
-    if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
-    if (typeof window !== 'undefined') {
-        return `http://${window.location.hostname}:5000/api`;
-    }
-    return 'http://localhost:5000/api';
-};
-
-const API_URL = getApiUrl();
+// Use relative URL to leverage Next.js rewrites proxy (works on any host/tunnel)
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 export class ApiError extends Error {
     constructor(public status: number, message: string) {

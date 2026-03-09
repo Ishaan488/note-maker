@@ -8,6 +8,8 @@ import tasksRoutes from './routes/tasks';
 import goalsRoutes from './routes/goals';
 import remindersRoutes from './routes/reminders';
 import dailyReviewRoutes from './routes/daily-review';
+import notificationsRoutes from './routes/notifications';
+import { startCronJobs } from './services/cron';
 
 dotenv.config();
 
@@ -28,6 +30,7 @@ app.use('/api/tasks', tasksRoutes);
 app.use('/api/goals', goalsRoutes);
 app.use('/api/reminders', remindersRoutes);
 app.use('/api/daily-review', dailyReviewRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Health check
 app.get('/api/health', (_, res) => {
@@ -38,6 +41,7 @@ app.get('/api/health', (_, res) => {
 async function start() {
     try {
         await initializeDatabase();
+        startCronJobs();
         app.listen(PORT as number, '0.0.0.0', () => {
             console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
         });
